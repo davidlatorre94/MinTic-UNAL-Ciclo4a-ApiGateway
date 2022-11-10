@@ -10,6 +10,7 @@ from flask_jwt_extended import JWTManager
 import json
 import requests
 import datetime
+import re
 
 from waitress import serve
 
@@ -17,6 +18,48 @@ app = Flask(__name__)
 
 app.config["JWT_SECRET_KEY"]="super-secret"
 jwt = JWTManager(app)
+
+
+@app.before_request
+def middleware():
+
+    urlAcceso = request.path
+    if (urlAcceso == "/login"):
+        pass
+    else:
+        verify_jwt_in_request()
+
+        infoUsuario = get_jwt_identity()
+        idRol = infoUsuario["rol"]["_id"]
+
+        limpiarUrl(urlAcceso)
+
+        urlValidarPermiso = dataConfig["url-backend-security"] + "/permisos-rol/validar-permiso/rol/" + idRol
+        headersValidarPermiso = {"Content-Type": "application/json"}
+        bodyValidarPermiso = {
+            "url": "estudiante/?",
+            "metodo": "POST"
+        }
+
+
+        respuestaValidarPermiso = requests.get(urlValidarPermiso, json=bodyValidarPermiso,
+                                               headers=headersValidarPermiso)
+        print("Respuesta validar permiso: ", respuestaValidarPermiso)
+
+        if (respuestaValidarPermiso.status_code == 200):
+            pass
+        else:
+            return {"mensaje": "Acceso Denegado"}, 401
+
+
+def limpiarUrl(urlAcceso):
+    partesUrl = urlAcceso.split("/")
+    print("partesUrl: " + str(partesUrl))
+    for laParte in partesUrl:
+        if re.search('\\d', laParte):
+            urlAcceso = urlAcceso.replace(laParte, "?")
+    print("urlAcceso: " + urlAcceso)
+    return urlAcceso
 
 @app.route("/login", methods=["POST"])
 def validarUsuario():
@@ -39,14 +82,23 @@ def validarUsuario():
         return {"mensaje": "Usuario y contraseña ERRONEOS"}, 401
 
 
-@app.route("/crear-estudiante", methods=["POST"])
+@app.route("/estudiante", methods=["POST"])
 def crearEstudiante():
-
     url = dataConfig["url-backend-academic"] + "/estudiante"
     headers = {"Content-Type": "application/json"}
     body = request.get_json()
 
     response = requests.post(url, json=body, headers=headers)
+
+    return response.json()
+
+@app.route("/estudiante/<string:idObject>", methods=['GET'])
+def buscarEstudiante(idObject):
+    url = dataConfig["url-backend-academic"] + "/estudiante/" + idObject
+    headers = {"Content-Type": "application/json"}
+    body = request.get_json()
+
+    response = requests.get(url, json=body, headers=headers)
 
     return response.json()
 
