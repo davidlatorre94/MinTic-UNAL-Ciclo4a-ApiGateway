@@ -3,5 +3,5 @@
   "port": 7777,
 
   "url-backend-security": "http://127.0.0.1:8080",
-  "url-backend-registraduria": "http://127.0.0.1:8888"
+  "url-backend-academic": "http://127.0.0.1:8888"
 }

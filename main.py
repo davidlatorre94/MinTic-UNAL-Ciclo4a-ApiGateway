@@ -10,6 +10,7 @@ from flask_jwt_extended import JWTManager
 import json
 import requests
 import datetime
+import re
 
 from waitress import serve
 
@@ -32,6 +33,10 @@ def middleware():
         infoToken = get_jwt_identity()
         idRol = infoToken["rol"]["_id"]
 
+        print("Url antes: ", urlCliente)
+        urlCliente = transformarUrl(urlCliente)
+        print("Url transformada: ", urlCliente)
+
         urlValidarPermiso = dataConfig["url-backend-security"] + "/permisos-rol/validar-permiso/rol/"+idRol
         headers = {"Content-Type": "application/json"}
         print("URL CLIENTE:", urlCliente)
@@ -48,8 +53,12 @@ def middleware():
         else:
             return {"mensaje": "Permiso denegado"}, 401
 
-
-
+def transformarUrl(urlCliente):
+    listadoPalabras = urlCliente.split("/")
+    for palabra in listadoPalabras:
+        if re.search('\\d', palabra):
+            urlCliente = urlCliente.replace(palabra, "?")
+    return urlCliente
 
 @app.route("/login", methods=["POST"])
 def validarUsuario():
@@ -91,14 +100,29 @@ def buscarEstudiante(idObject):
     print("Respuesta servicio buscar estudiante: ", response)
     return response.json()
 
-@app.route("/estudiante/<string:idObject>", methods=['GET'])
-def buscarEstudiante(idObject):
-    url = dataConfig["url-backend-registraduria"] + "/estudiante/"+idObject
+@app.route("/estudiante", methods=['GET'])
+def buscarTodosLosEstudiantes():
+    url = dataConfig["url-backend-academic"] + "/estudiante"
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.get(url, headers=headers)
+
+    return response.json()
+
+@app.route("/estudiante", methods=['PUT'])
+def actualizarEstudiante():
+    url = dataConfig["url-backend-academic"] + "/estudiante"
     headers = {"Content-Type": "application/json"}
     body = request.get_json()
+    response = requests.put(url, json=body, headers=headers)
+    return response.json()
 
-    response = requests.post(url, json=body, headers=headers)
+@app.route("/estudiante/<string:idObject>", methods=['DELETE'])
+def eliminarEstudiante(idObject):
+    url = dataConfig["url-backend-academic"] + "/estudiante/" + idObject
+    headers = {"Content-Type": "application/json"}
 
+    response = requests.delete(url, headers=headers)
     return response.json()
 
 
