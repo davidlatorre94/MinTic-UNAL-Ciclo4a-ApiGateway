@@ -32,18 +32,15 @@ def middleware():
         infoUsuario = get_jwt_identity()
         idRol = infoUsuario["rol"]["_id"]
 
-        limpiarUrl(urlAcceso)
+        urlAcceso = transformarUrl(urlAcceso)
 
         urlValidarPermiso = dataConfig["url-backend-security"] + "/permisos-rol/validar-permiso/rol/" + idRol
         headersValidarPermiso = {"Content-Type": "application/json"}
         bodyValidarPermiso = {
-            "url": "estudiante/?",
-            "metodo": "POST"
+            "url": urlAcceso,
+            "metodo": request.method
         }
-
-
-        respuestaValidarPermiso = requests.get(urlValidarPermiso, json=bodyValidarPermiso,
-                                               headers=headersValidarPermiso)
+        respuestaValidarPermiso = requests.get(urlValidarPermiso, json=bodyValidarPermiso, headers=headersValidarPermiso)
         print("Respuesta validar permiso: ", respuestaValidarPermiso)
 
         if (respuestaValidarPermiso.status_code == 200):
@@ -51,14 +48,16 @@ def middleware():
         else:
             return {"mensaje": "Acceso Denegado"}, 401
 
+def transformarUrl(urlAcceso):
+    print("Url antes de transformarla: ", urlAcceso)
 
-def limpiarUrl(urlAcceso):
-    partesUrl = urlAcceso.split("/")
-    print("partesUrl: " + str(partesUrl))
-    for laParte in partesUrl:
-        if re.search('\\d', laParte):
-            urlAcceso = urlAcceso.replace(laParte, "?")
-    print("urlAcceso: " + urlAcceso)
+    partes = urlAcceso.split("/")
+    print("La url dividida es:", partes)
+    for palabra in partes:
+        if re.search('\\d', palabra):
+            urlAcceso = urlAcceso.replace(palabra, "?")
+
+    print("Url después de transformarla:", urlAcceso)
     return urlAcceso
 
 @app.route("/login", methods=["POST"])
@@ -96,12 +95,34 @@ def crearEstudiante():
 def buscarEstudiante(idObject):
     url = dataConfig["url-backend-academic"] + "/estudiante/" + idObject
     headers = {"Content-Type": "application/json"}
-    body = request.get_json()
 
-    response = requests.get(url, json=body, headers=headers)
+    response = requests.get(url, headers=headers)
 
     return response.json()
 
+@app.route("/estudiante", methods=['GET'])
+def buscarTodosLosEstudiantes():
+    url = dataConfig["url-backend-academic"] + "/estudiante"
+    headers = {"Content-Type": "application/json"}
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+@app.route("/estudiante", methods=['PUT'])
+def actualizarEstudiante():
+    url = dataConfig["url-backend-academic"] + "/estudiante"
+    headers = {"Content-Type": "application/json"}
+    body = request.get_json()
+
+    response = requests.put(url, json=body, headers=headers)
+    return response.json()
+
+@app.route("/estudiante/<string:idObject>", methods=['DELETE'])
+def eliminarEstudiante(idObject):
+    url = dataConfig["url-backend-academic"] + "/estudiante/"+idObject
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.delete(url, headers=headers)
+    return response.json()
 
 def loadFileConfig():
     with open('config.json') as propiedades:
